@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content="">
+    <meta name="author" content="">    
+
+    <title>Redis Explorer</title>
+
+    
+
+    
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.min.js"></script>  
+    <link rel="stylesheet" type="text/css" href="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"/>  
+    <script type="text/javascript" src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script type="text/javascript" src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="static/bootstrap3-typeahead.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap3-dialog/1.34.7/css/bootstrap-dialog.min.css">
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap3-dialog/1.34.7/js/bootstrap-dialog.min.js"></script>
+    
+    
+    <!-- Custom styles for this template -->
+    <link rel="stylesheet" type="text/css" href="static/jquery.jsonview.min.css">
+    <script type="text/javascript" src="static/jquery.jsonview.min.js"></script>
+    <link href="static/grid.css" rel="stylesheet">
+
+    <style type="text/css">
+      .typeahead a.dropdown-item{
+        font-family: monospace;
+      }
+      .typeahead a.dropdown-item strong{
+        color:blue;       
+      }
+      .typeahead .active a.dropdown-item strong{
+        color:yellow;
+      }
+      .glyphicon-refresh-animate {
+          -animation: spin .7s infinite linear;
+          -webkit-animation: spin2 .7s infinite linear;
+      }
+
+      @-webkit-keyframes spin2 {
+          from { -webkit-transform: rotate(0deg);}
+          to { -webkit-transform: rotate(360deg);}
+      }
+
+      @keyframes spin {
+          from { transform: scale(1) rotate(0deg);}
+          to { transform: scale(1) rotate(360deg);}
+      }
+      #searching{
+        background-color: transparent;
+        border:none;
+        color:black;
+        font-size: 18px;
+      }
+      #servers li.active>a.connect,#connected.active{
+        background-color: green;
+        color:white;
+      }
+      #servers li.active>a.edit{
+        background-color: white;
+        color:black;
+      }
+      #servers{
+        min-width: 220px;
+      }
+      #servers >li>a{
+        display: inline-block;        
+        width: 82%;
+        border-radius: 0;
+      }
+      #servers >li>a.edit{
+        padding: 5px 25px 5px 10px;
+        width: 21px;
+      }
+      #connected{
+        border-radius: 0;
+      }
+      #value .jsonview .string {
+        color: green;
+        text-overflow: ellipsis;
+        display: inline-block;
+        white-space: nowrap;
+        overflow: hidden;        
+        width: auto;
+        max-width: 700px;
+        padding: 0px 5px 0px 5px;
+        cursor: pointer;
+        font-family: monospace;
+        font-size: 13px;
+        margin:-5px;
+    }
+    #value .jsonview .prop{
+      font-family: monospace;
+      font-size: 13px;
+      display: inline-block;
+      padding:0px 5px 0px 0px;
+    }
+    
+    #value .jsonview .prop:after{
+      display: inline-block;
+    }
+    #value span.string.opened.json-val {
+        display: inline;
+    }
+    #value span.string.opened.json-val>div.jsonview {
+        display: inline;
+    }
+    .board{
+      border: 1px solid green;
+      background-color: #f3f3f3;
+    }
+    .label{
+      font-size: 100%;  
+      font-family: monospace;
+    }
+    #searched_keys .list-group-item:first-child {
+      border-top-left-radius: 0px;
+      border-top-right-radius: 0px;
+    }
+    #searched_keys .list-group-item{
+      position: relative;
+      display: block;
+      padding: 5px 15px;
+      margin-bottom: -1px;
+      background-color: #f5f5f5;
+      border: 1px solid #ddd;
+      font-family: monospace;
+      cursor: pointer;
+      color: #337ab7;
+      white-space: nowrap;
+      text-overflow: ellipsis;      
+      overflow: hidden;
+    }
+    #searched_keys .list-group-item.active{
+      color: #fff;
+      background-color: #337ab7;
+      border-color: #337ab7;      
+    }
+    #value .jsonview li{
+      padding:1px 0px 1px 0px;
+    }
+    #key{
+      font-family: monospace;
+    }
+    </style>
+  </head>
+
+  <body>
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <div class="container">
+            <div class="row" style="margin-top:7px;">
+              <div class="col-md-9">
+                <div class="input-group">
+                  <span id="searching" class="input-group-addon glyphicon glyphicon-refresh glyphicon-refresh-animate" style="visibility: hidden;"></span>
+                  <input id="key" type="text" class="form-control typeahead" placeholder="Key" aria-describedby="basic-addon1">
+                </div>
+              </div>
+              <div class="col-md-2">              
+                <!-- Split button -->
+                <div class="btn-group">
+                  <button id="connected" type="button" class="btn btn-default">Server</button>
+                  <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <span class="caret"></span>
+                    <span class="sr-only">Toggle Dropdown</span>
+                  </button>
+                  <ul id="servers" class="dropdown-menu">                    
+                    <li role="separator" class="divider"></li>
+                    <li><a href="#" class="btn" style="color:blue;" data-toggle="modal" data-target="#myModal">Add Server</a></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>    
+     <div class="row clearfix" style="margin-top: 55px;min-height: 25px;margin-bottom: 5px;">
+      <div class="col col-md-3">        
+        <div class="col col-md-2">
+          <span id="key_pattern" class="label label-default"></span>
+        </div>
+      </div>      
+      <div class="col col-md-8">
+        <div class="col col-md-1">
+          <span id="key_type" class="label label-info"></span>
+        </div>
+        <div class="col col-md-2">          
+          <span id="ttl" class="label label-info"></span>
+        </div>
+        <div class="col col-md-8">
+          <span id="key_name" class="label label-info"></span>        
+        </div>
+      </div>
+    </div>
+    <div class="row clearfix">
+      <div class="col col-md-3">
+        <div class="list-group" id="searched_keys">          
+        </div>
+      </div>      
+      <div class="col col-md-8 board">
+        <div id="value"></div>
+      </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <h4 class="modal-title" id="myModalLabel">Modal title</h4>
+          </div>
+          <div class="modal-body">
+            <div class="input-group">
+                <span class="input-group-addon">Name</span>
+                <input id="redis_name" type="text" class="form-control" placeholder="Name" aria-describedby="basic-addon1">
+            </div>
+            <div class="input-group">
+                <span class="input-group-addon">Redis URL</span>
+                <input id="redis_url" type="text" class="form-control" placeholder="password@host:port" aria-describedby="basic-addon1">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" onclick="add_server();">Save</button>
+            <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>            
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="text/javascript">
+      var on_going_mini_search=null;
+      function mini_search(query,search_callback){
+
+        var payload=
+          { 
+            redis_hash : redis_hash
+            ,"pattern" : query+"*"
+            ,max_keys : 16
+            ,timeout : 1
+          }
+        $("#searching").css("visibility","visible");
+        if(on_going_mini_search){
+          on_going_mini_search.abort();
+        }
+        on_going_mini_search=$.ajax({
+          url:"search/",
+          method:"POST",
+          data:JSON.stringify(payload),
+          contentType: "application/json; charset=utf-8",
+            success:function(res){
+              console.log(res);
+              if(res.result){
+                search_callback(res.result);  
+              }              
+              $("#searching").css("visibility","hidden");
+            }
+        })        
+      }
+      var on_going_search=null;
+      function render_searched_keys(result){
+        $(result).each(function(ind,str_key){
+          var item= document.createElement("a");
+          //<a href="#" class="list-group-item active">Cras justo odio</a>
+          $(item).addClass("list-group-item");
+          $(item).href="javascript:;";
+          $(item).attr("data-toggle","tooltip");
+          $(item).attr("data-placement","bottom");
+          $(item).attr("title",str_key);
+          $(item).html(str_key);
+          //data-toggle="tooltip" data-placement="bottom" title="Tooltip on bottom"
+          $("#searched_keys").append(item);
+        });
+      }
+      function search(query){
+
+        var payload=
+          { 
+            redis_hash : redis_hash
+            ,"pattern" : query+"*"
+            ,max_keys : 1000
+            ,timeout : 10
+          }
+        $("#searching").css("visibility","visible");
+        if(on_going_search){
+          on_going_search.abort();
+        }
+        $("#searched_keys").html("");
+        on_going_search=$.ajax({
+          url:"search/",
+          method:"POST",
+          data:JSON.stringify(payload),
+          contentType: "application/json; charset=utf-8",
+            success:function(res){
+              if(res.result){
+                render_searched_keys(res.result);
+              }              
+              $("#searching").css("visibility","hidden");
+            }
+        })        
+      }
+
+      var $input = $(".typeahead");
+      $input.typeahead({
+        source: mini_search,
+        autoSelect: true,
+        items:16,
+        delay:200
+      });
+      $input.change(function() {
+        var current = $input.typeahead("getActive");
+        if (current) {
+          // Some item from your model is active!
+          if (current.name == $input.val()) {
+            // This means the exact match is found. Use toLowerCase() if you want case insensitive match.
+            console.log($input.val());
+            console.log("exact match");
+          } else {
+            console.log($input.val())
+            console.log("partial match");
+            // This means it is only a partial match, you can either add a new item
+            // or take the active if you don't want new items
+          }
+        } else {
+          console.log($input.val())
+          console.log("no match");
+          // Nothing is active so it is a new value (or maybe empty value)
+        }
+      });
+      
+      var redis_hash=null;
+      
+      
+      
+      function connect_server(e){
+        //var         
+        e=e||event;
+        var $btn=$(e.currentTarget).closest("li");
+        if($btn.hasClass("active")){
+
+        }else{
+          var redis_url=$btn.closest("li").data("redis_url");
+          var redis_name=$btn.closest("li").data("redis_name");
+          console.log(redis_name)
+          var connect_payload={"redis_url":redis_url};
+          $.ajax({
+              url:"connect/",
+              method:"POST",
+              data: JSON.stringify(connect_payload),
+              contentType: "application/json; charset=utf-8",
+              success:function(res){
+                redis_hash=res.result.redis_hash;
+                $btn.data("redis_hash",redis_hash);
+                $btn.addClass("active");
+                $("#connected").data("redis_hash",redis_hash);
+                $("#connected").data("redis_url",redis_url);
+                $("#connected").addClass("active");
+                $("#connected").html(redis_name);
+              }
+          });     
+        }
+      }
+      function add_server(){
+        var redis_name=$("#redis_name").val();
+        var redis_url=$("#redis_url").val();
+
+        if(localStorage){
+          var strServers = localStorage.getItem("redis_servers");
+          var servers=[]
+          if(strServers){
+            servers=JSON.parse(strServers).servers;
+            console.log(servers);
+          }
+          servers.push({redis_name:redis_name,redis_url:redis_url})
+          localStorage.setItem("redis_servers",JSON.stringify({servers:servers}));
+        }
+        return true;
+      }
+      function load_servers(){
+        if(localStorage){
+          var strServers = localStorage.getItem("redis_servers");
+          var servers=[]
+          if(strServers){
+            servers=JSON.parse(strServers).servers;            
+          }
+          for(i=servers.length-1;i>=0;i--){
+            var server = servers[i];
+            var li=document.createElement("li");
+            $(li).html('<a href="#" class="btn connect" onclick="connect_server();">'+server.redis_name+'</a><a href="#" class="edit"><span class="glyphicon glyphicon-edit"></span></a>');
+            $(li).data("redis_url",server.redis_url);
+            $(li).data("redis_name",server.redis_name);
+            $("#servers").prepend(li);
+          }
+        }
+      }     
+      function get_key_info(key){
+        var payload={redis_hash:redis_hash,key:key}
+        $.ajax({
+          url:"key/",
+          method:"POST",
+          data:JSON.stringify(payload),
+          contentType: "application/json; charset=utf-8",
+            success:function(res){
+              console.log(res);
+              if(res.result){
+                
+              }                            
+            }
+        })        
+      }
+      function render_val(key,result){
+        $("#key_type").text(result.type);
+        $("#key_name").text(key);
+        var ttl=result.ttl;
+        $("#ttl").text("");
+        if(ttl && ttl!=-1){
+          var minutes=ttl/60;
+          var ttl_text="";
+          if(minutes>0){
+            var hours=minutes/60;
+            if(hours>0){
+              var days=hours/24;
+              if(days>0){
+                ttl_text=Math.floor(days) +" Days";
+              }else{
+                ttl_text=Math.floor(hours) +" Hours";
+              }
+            }else{
+              ttl_text=Math.floor(minutes) +" Minutes";
+            }
+          }else{
+            ttl_text=Math.floor(ttl) +" Seconds";
+          }
+          $("#ttl").text("Expire in "+ttl_text);
+        }else{
+          $("#ttl").text("No Expire");
+        }
+        if(result.type=="hash"){
+          var val = result.val;
+          $("#value").JSONView(val, { collapsed: true });
+        }else if(result.type=="set"){
+          var val = result.val;
+          $("#value").JSONView(val, { collapsed: true });
+        }else if(result.type=="string"){
+          var val = result.val;
+          $("#value").JSONView(val, { collapsed: true });
+        }else{
+          var val = result.val;
+          $("#value").JSONView(val, { collapsed: true });
+        } 
+      }
+      function fetch_key_value(key,search_pattern){
+        var payload={redis_hash:redis_hash,key:key}        
+        $("#key_name").text(key);
+        if(search_pattern){
+          $("#searched_keys").html("");
+          $("#key_pattern").text("");
+        }        
+        $.ajax({
+          url:"val/",
+          method:"POST",
+          data:JSON.stringify(payload),
+          contentType: "application/json; charset=utf-8",
+            success:function(res){
+              console.log(res);
+              if(res.result){
+                render_val(key,res.result)                
+              }else{
+                $("#key_name").text("");
+                if(search_pattern){   
+                  $("#key_pattern").text(key);               
+                  search(key);
+                }
+              }                            
+            }
+        })
+      }      
+
+      $(document).ready(function(){
+        load_servers();
+        $("#key").keypress(function (e) {
+          if (e.which == 13) {
+            fetch_key_value($("#key").val(),true);
+            return false;    //<---- Add this line
+          }
+        });
+        $("#value").on("click","span.string",function(e){
+            var elem=e.currentTarget;
+            if($(elem).hasClass("opened")){
+              
+            }else{
+              try{
+                var text=$(elem).text();
+                var json_val = JSON.parse(eval(text));
+                console.log(typeof(json_val));
+                if(json_val && typeof(json_val)=="object"){
+                  $(elem).data("text",text);
+                  $(elem).text("");
+                  $(elem).JSONView(json_val,{ collapsed: true });
+                  $(elem).addClass("json-val");     
+                }       
+
+              }catch(e){
+
+              }
+              
+            }
+            $(elem).addClass("opened");
+        })
+        $("#searched_keys").on("click","a.list-group-item",function(e){
+          var elem=e.currentTarget;
+          $("#searched_keys").find("a.list-group-item").removeClass("active");
+          $(elem).addClass("active");
+          var key=$(elem).text();
+          fetch_key_value(key)
+        });
+      });
+    </script>
+  </body>
+</html>
